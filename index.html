@@ -1,0 +1,328 @@
+﻿
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1">
+
+    <title>我的打卡系統</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f3f4f6;
+            padding: 20px;
+            margin: 0;
+            text-align: center;
+        }
+
+        .card {
+            background: white;
+            max-width: 480px;
+            margin: 35px auto;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px #00000015;
+        }
+
+        #clock {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        button {
+            padding: 14px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        #btnIn {
+            background: #16a34a;
+        }
+
+        #btnOut {
+            background: #2563eb;
+        }
+
+        button:disabled {
+            background: #9ca3af !important;
+            cursor: not-allowed;
+        }
+
+        .record {
+            margin-top: 25px;
+            line-height: 2;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        th, td {
+            border-bottom: 1px solid #ddd;
+            padding: 10px 4px;
+        }
+
+        th {
+            background: #f9fafb;
+        }
+        #btnExport {
+            background-color: #334155;
+            color: white;
+            margin-top: 20px;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+            #btnExport:hover {
+                background-color: #1e293b;
+            }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h2>我的打卡系統</h2>
+
+        <p id="today"></p>
+        <div id="clock"></div>
+
+        <button id="btnIn" onclick="clockIn()">
+            上班打卡
+        </button>
+
+        <button id="btnOut" onclick="clockOut()">
+            下班打卡
+        </button>
+
+        <div class="record">
+            <h3>今日紀錄</h3>
+            <div id="inTime">上班：尚未打卡</div>
+            <div id="outTime">下班：尚未打卡</div>
+        </div>
+
+        <h3>歷史紀錄</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>上班</th>
+                    <th>下班</th>
+                </tr>
+            </thead>
+            <tbody id="recordTable"></tbody>
+        </table>
+        <button id="btnExport" onclick="exportCSV()">
+            匯出打卡紀錄
+        </button>
+    </div>
+
+    <script>
+        const storageKey = "myClockRecords";
+
+        function getDateKey(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1)
+                .padStart(2, "0");
+            const day = String(date.getDate())
+                .padStart(2, "0");
+
+            return `${year}-${month}-${day}`;
+        }
+
+        function getTime(date) {
+            return date.toLocaleTimeString("zh-TW", {
+                hour12: false
+            });
+        }
+
+        function getRecords() {
+            return JSON.parse(
+                localStorage.getItem(storageKey) || "{}"
+            );
+        }
+
+        function saveRecords(records) {
+            localStorage.setItem(
+                storageKey,
+                JSON.stringify(records)
+            );
+        }
+
+        function updateClock() {
+            const now = new Date();
+
+            document.getElementById("today")
+                .textContent =
+                now.toLocaleDateString("zh-TW");
+
+            document.getElementById("clock")
+                .textContent = getTime(now);
+        }
+
+        function clockIn() {
+            const now = new Date();
+            const key = getDateKey(now);
+            const records = getRecords();
+
+            if (records[key]?.clockIn) {
+                alert("今天已經上班打卡過了！");
+                return;
+            }
+
+            records[key] = {
+                clockIn: getTime(now),
+                clockOut: ""
+            };
+
+            saveRecords(records);
+            renderRecords();
+        }
+
+        function clockOut() {
+            const now = new Date();
+            const key = getDateKey(now);
+            const records = getRecords();
+
+            if (!records[key]?.clockIn) {
+                alert("請先進行上班打卡！");
+                return;
+            }
+
+            if (records[key].clockOut) {
+                alert("今天已經下班打卡過了！");
+                return;
+            }
+
+            records[key].clockOut = getTime(now);
+
+            saveRecords(records);
+            renderRecords();
+        }
+
+        function renderRecords() {
+            const records = getRecords();
+            const today = getDateKey(new Date());
+
+            const todayRecord = records[today] || {};
+
+            document.getElementById("inTime")
+                .textContent = "上班：" +
+                (todayRecord.clockIn || "尚未打卡");
+
+            document.getElementById("outTime")
+                .textContent = "下班：" +
+                (todayRecord.clockOut || "尚未打卡");
+
+            document.getElementById("btnIn")
+                .disabled = !!todayRecord.clockIn;
+
+            document.getElementById("btnOut")
+                .disabled =
+                !todayRecord.clockIn ||
+                !!todayRecord.clockOut;
+
+            const table = document.getElementById(
+                "recordTable"
+            );
+
+            table.innerHTML = "";
+
+            const dates = Object.keys(records).sort().reverse();
+
+            for (const date of dates) {
+                const record = records[date];
+
+                const row = document.createElement("tr");
+
+                for (const value of [
+                    date,
+                    record.clockIn || "-",
+                    record.clockOut || "-"
+                ]) {
+                    const cell = document.createElement("td");
+                    cell.textContent = value;
+                    row.appendChild(cell);
+                }
+
+                table.appendChild(row);
+            }
+        }
+
+        updateClock();
+        renderRecords();
+
+        setInterval(() => {
+            const previousDate =
+                document.getElementById("today").dataset.date;
+
+            const currentDate = getDateKey(new Date());
+
+            updateClock();
+
+            if (previousDate !== currentDate) {
+                document.getElementById("today")
+                    .dataset.date = currentDate;
+                renderRecords();
+            }
+        }, 1000);
+
+        function exportCSV() {
+            const records = getRecords();
+            const dates = Object.keys(records).sort();
+
+            if (dates.length === 0) {
+                alert("目前沒有打卡紀錄！");
+                return;
+            }
+
+            const rows = [
+                ["日期", "上班時間", "下班時間"]
+            ];
+
+            for (const date of dates) {
+                const record = records[date];
+
+                rows.push([
+                    date,
+                    record.clockIn || "",
+                    record.clockOut || ""
+                ]);
+            }
+
+            const csv = rows
+                .map(row => row.join(","))
+                .join("\r\n");
+
+            const blob = new Blob(
+                ["\uFEFF" + csv],
+                { type: "text/csv;charset=utf-8;" }
+            );
+
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+
+            link.href = url;
+            link.download = "打卡紀錄.csv";
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            URL.revokeObjectURL(url);
+        }
+
+    </script>
+</body>
+</html>
