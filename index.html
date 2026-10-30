@@ -1,4 +1,4 @@
-﻿
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -87,6 +87,20 @@
             #btnExport:hover {
                 background-color: #1e293b;
             }
+        #btnClear {
+            background-color: #dc2626;
+            color: white;
+            margin-top: 10px;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+            #btnClear:hover {
+                background-color: #b91c1c;
+            }
     </style>
 </head>
 
@@ -126,6 +140,7 @@
         <button id="btnExport" onclick="exportCSV()">
             匯出打卡紀錄
         </button>
+        <button id="btnClear" onclick="clearRecords()">清除打卡紀錄</button>
     </div>
 
     <script>
@@ -321,6 +336,43 @@
             document.body.removeChild(link);
 
             URL.revokeObjectURL(url);
+        }
+
+        function clearRecords() {
+
+            const records = getRecords();
+
+            // 判斷有沒有打卡紀錄
+            if (Object.keys(records).length === 0) {
+                alert("目前沒有打卡紀錄可以清除！");
+                return;
+            }
+
+            // 第一次確認
+            const confirmFirst = confirm(
+                "確定要清除所有打卡紀錄嗎？\n\n請先確認已經匯出 CSV 備份。"
+            );
+
+            if (!confirmFirst) {
+                return;
+            }
+
+            // 第二次確認
+            const confirmSecond = confirm(
+                "最後確認！\n\n清除後無法從本系統復原，確定要繼續嗎？"
+            );
+
+            if (!confirmSecond) {
+                return;
+            }
+
+            // 清除儲存的打卡紀錄
+            localStorage.removeItem("myClockRecords");
+
+            // 重新顯示畫面
+            renderRecords();
+
+            alert("打卡紀錄已成功清除！");
         }
 
     </script>
